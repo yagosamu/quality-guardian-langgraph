@@ -1,0 +1,156 @@
+networks:
+  guardian-network:
+    driver: bridge
+
+volumes:
+  guardian_pg_data:
+  guardian_mongo_data:
+  guardian_qdrant_data:
+  guardian_neo4j_data:
+  guardian_seaweedfs_data:
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: guardian-postgres
+    environment:
+      POSTGRES_DB: dataops
+      POSTGRES_USER: dataops
+      POSTGRES_PASSWORD: dataops123
+    ports:
+      - "5442:5432"
+    volumes:
+      - guardian_pg_data:/var/lib/postgresql/data
+      - ./llamaindex_pydantic_rag/infra/scripts/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - guardian-network
+
+  mongo:
+    image: mongo:7
+    container_name: guardian-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - guardian_mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - guardian-network
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: guardian-qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - guardian_qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/6333'"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - guardian-network
+
+  neo4j:
+    image: neo4j:5-community
+    container_name: guardian-neo4j
+    environment:
+      NEO4J_AUTH: neo4j/dataops123
+      NEO4J_PLUGINS: '["apoc"]'
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - guardian_neo4j_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p dataops123 'RETURN 1'"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - guardian-network
+
+  seaweedfs:
+    image: chrislusf/seaweedfs:latest
+    container_name: guardian-seaweedfs
+    command: server -s3 -dir=/data
+    ports:
+      - "8333:8333"
+      - "9333:9333"
+    volumes:
+      - guardian_seaweedfs_data:/data
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:9333/cluster/status"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - guardian-network
+
+  seed-neo4j:
+    image: neo4j:5-community
+    container_name: guardian-seed-neo4j
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    environment:
+      NEO4J_PASSWORD: dataops123
+    volumes:
+      - ./llamaindex_pydantic_rag/infra/scripts:/scripts:ro
+    entrypoint: ["bash", "/scripts/seed-neo4j.sh"]
+    restart: "no"
+    networks:
+      - guardian-network
+
+  init-seaweedfs:
+    image: amazon/aws-cli:latest
+    container_name: guardian-init-seaweedfs
+    depends_on:
+      seaweedfs:
+        condition: service_healthy
+    volumes:
+      - ./llamaindex_pydantic_rag/infra/scripts:/scripts:ro
+      - ./llamaindex_pydantic_rag/infra/docs:/docs:ro
+    entrypoint: ["sh", "/scripts/init-seaweedfs.sh"]
+    restart: "no"
+    networks:
+      - guardian-network
+
+  data-generator:
+    build:
+      context: ./llamaindex_pydantic_rag/generator
+      dockerfile: Dockerfile
+    container_name: guardian-data-generator
+    environment:
+      GENERATOR_INTERVAL_SECONDS: 30
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: dataops
+      POSTGRES_USER: dataops
+      POSTGRES_PASSWORD: dataops123
+      MONGO_HOST: mongo
+      MONGO_PORT: 27017
+      MONGO_DB: dataops
+      SEAWEEDFS_HOST: seaweedfs
+      SEAWEEDFS_PORT: 8333
+      SEAWEEDFS_BUCKET: dataops-lake
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_healthy
+    networks:
+      - guardian-network
+    restart: unless-stopped

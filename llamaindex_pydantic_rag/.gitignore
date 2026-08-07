@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+.venv/
+venv/
+
+# Environment
+.env
+
+# IDE
+.vscode/
+.idea/
+
+# Docker
+docker-compose.override.yml
+
+# Data
+*.parquet
+*.csv
+!docs/**/*.csv
+!infra/**/*.csv
+/docs
+/prompts
+/sketch
+
+# Local-only progress notes (not for the repo)
+PROGRESS.md

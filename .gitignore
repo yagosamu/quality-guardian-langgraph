@@ -1,0 +1,51 @@
+# ─── Secrets ───
+**/.env
+!**/.env.example
+
+# ─── Virtual environments ───
+**/.venv/
+**/venv/
+
+# ─── Python ───
+**/__pycache__/
+**/*.py[cod]
+**/*.egg-info/
+**/dist/
+**/build/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+
+# ─── Agent runtime artifacts ───
+**/guardian_checkpoints.db
+**/*.sqlite
+**/*.sqlite3
+**/.langgraph_api/
+**/.chainlit/
+**/.files/
+**/chainlit.md
+
+# ─── Reference material (kept local, not published) ───
+**/prompts/
+**/sketch/
+
+# ─── Docker ───
+**/docker-compose.override.yml
+
+# ─── Local data from the Hub snapshot ───
+llamaindex_pydantic_rag/infra/data/
+llamaindex_pydantic_rag/docs/
+llamaindex_pydantic_rag/presentation/
+
+# ─── Data formats ───
+*.parquet
+*.csv
+!llamaindex_pydantic_rag/docs/**/*.csv
+!llamaindex_pydantic_rag/infra/**/*.csv
+
+# ─── OS / editor ───
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
