@@ -10,12 +10,14 @@
 
 Every node is a plain `(state) -> dict` function that returns a partial state
 update plus one message describing what it did, so the graph's reasoning is
-visible in the `messages` stream. `human_gate` is still a stub here — it
-becomes a real `interrupt()` in prompt 07.
+visible in the `messages` stream. `human_gate` is the one exception: it
+pauses the graph for real with `interrupt()` and returns a `Command` instead
+of a dict, since it also needs to steer where the graph goes next.
 """
 
 from langchain.messages import AIMessage
 from langgraph.graph import END, START, StateGraph
+from langgraph.types import Command, interrupt
 
 from . import config, ledger, llm, scoring
 from .state import GuardianState
@@ -182,15 +184,56 @@ def recommend(state: GuardianState) -> dict:
     }
 
 
-def human_gate(state: GuardianState) -> dict:
-    # Stub for now — becomes a real interrupt()/Command(resume=...) in prompt 07.
-    content = "human_gate stub — approval flow arrives in prompt 07 (interrupt())"
-    return {"messages": [AIMessage(content=content, name="human_gate")]}
+def human_gate(state: GuardianState) -> Command:
+    # Writing a RED verdict is a risky action — the graph PAUSES here for real
+    # and hands control back to a human. `interrupt()` freezes execution at
+    # this exact point (thanks to the checkpointer from prompt 06) until
+    # `Command(resume=...)` comes in on the same thread_id.
+    decision = interrupt(
+        {
+            "question": (
+                f"Dataset '{state['dataset']}' está RED "
+                f"(health={state.get('health_score')}). Aprovar gravação?"
+            ),
+            "violations": state.get("rule_violations") or [],
+            "options": ["approve", "override"],
+        }
+    )
+
+    if decision == "override":
+        content = "human override: red downgraded to yellow before write"
+        return Command(
+            update={
+                "human_decision": "override",
+                "quality_flag": "yellow",
+                "messages": [AIMessage(content=content, name="human_gate")],
+            },
+            goto="recommend",
+        )
+
+    content = "human approved: red flag stands as-is"
+    return Command(
+        update={
+            "human_decision": "approve",
+            "messages": [AIMessage(content=content, name="human_gate")],
+        },
+        goto="recommend",
+    )
 
 
 def write_ledger(state: GuardianState) -> dict:
     ledger.ensure_quality_columns()
-    n_written = ledger.write_scores(state["_scored"])
+
+    scored = state.get("_scored") or []
+    if state.get("human_decision") == "override":
+        # The human chose not to write a RED verdict as-is — soften the
+        # individually-red records to yellow before persisting.
+        scored = [
+            (row_id, row_score, "yellow" if flag == "red" else flag)
+            for row_id, row_score, flag in scored
+        ]
+
+    n_written = ledger.write_scores(scored)
     distribution = ledger.count_by_flag()
 
     content = f"wrote {n_written} scores — distribution {distribution}"
@@ -249,7 +292,8 @@ def build_graph(checkpointer=None):
         {"validate_rules": "validate_rules", "optimize": "optimize", "human_gate": "human_gate"},
     )
 
-    builder.add_edge("human_gate", "recommend")
+    # No static edge out of human_gate: it always returns Command(goto=...),
+    # which controls routing directly (to "recommend", in both branches).
     builder.add_edge("recommend", "write_ledger")
     builder.add_edge("write_ledger", END)
 

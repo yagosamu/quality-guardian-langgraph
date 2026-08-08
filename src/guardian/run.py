@@ -46,11 +46,24 @@ def _checkpointer() -> SqliteSaver:
 def _report_state(compiled, run_config: dict) -> None:
     snap = compiled.get_state(run_config)
     thread_id = run_config["configurable"]["thread_id"]
-    if snap.next:
-        print(f"[PAUSADO em {snap.next}]")
-        print(f"  retome com: python -m src.guardian.run resume --thread {thread_id} --decision approve")
-    else:
+
+    if not snap.next:
         print("[CONCLUÍDO]")
+        return
+
+    print(f"[PAUSADO em {snap.next}]")
+    for i in snap.interrupts:
+        payload = i.value
+        if isinstance(payload, dict):
+            print(f"  pergunta: {payload.get('question')}")
+            if payload.get("violations"):
+                print(f"  violações: {payload['violations']}")
+            if payload.get("options"):
+                print(f"  opções: {payload['options']}")
+        else:
+            print(f"  interrupt: {payload}")
+
+    print(f"  retome com: python -m src.guardian.run resume --thread {thread_id} --decision approve|override")
 
 
 def _draw() -> None:
@@ -78,10 +91,9 @@ def _run(thread: str | None, plain: bool, dataset: str) -> None:
 
 
 def _resume(thread: str, decision: str, plain: bool) -> None:
-    # human_gate is still a stub (real interrupt() lands in prompt 07) — this
-    # subcommand exists now so the CLI surface is already in place. Once the
-    # graph actually pauses, this is how a human unblocks it on the same
-    # thread_id, from the exact checkpoint it stopped at.
+    # Feeds the human's decision back into the exact interrupt() call that
+    # paused human_gate, on the same thread_id — the graph resumes from that
+    # checkpoint, not from the start.
     compiled = build_graph(checkpointer=_checkpointer())
     renderer = make_renderer(rich=not plain)
 
