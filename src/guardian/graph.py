@@ -17,7 +17,7 @@ of a dict, since it also needs to steer where the graph goes next.
 
 from langchain.messages import AIMessage
 from langgraph.graph import END, START, StateGraph
-from langgraph.types import Command, interrupt
+from langgraph.types import Command, RunnableConfig, interrupt
 
 from . import config, ledger, llm, scoring
 from .state import GuardianState
@@ -298,6 +298,19 @@ def build_graph(checkpointer=None):
     builder.add_edge("write_ledger", END)
 
     return builder.compile(checkpointer=checkpointer)
+
+
+def studio_graph(config: RunnableConfig | None = None):
+    """Entrypoint LangGraph Studio loads (langgraph.json -> guardian.graph:studio_graph).
+
+    Two traps, resolved deliberately:
+    1. Compiled WITHOUT a checkpointer — the dev server manages its own
+       persistence; passing one raises "Invalid checkpointer: dict".
+    2. Signature typed as `RunnableConfig | None`, not `*args/**kwargs` —
+       `langgraph-cli` inspects the factory's signature and rejects it
+       otherwise.
+    """
+    return build_graph(checkpointer=None)
 
 
 graph = build_graph()
