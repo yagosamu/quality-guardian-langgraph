@@ -8,6 +8,7 @@ import argparse
 import sys
 import uuid
 
+from . import config
 from .graph import build_graph
 from .render import make_renderer
 from .state import initial_state
@@ -36,7 +37,10 @@ def _run(thread: str | None, plain: bool, dataset: str) -> None:
     renderer = make_renderer(rich=not plain)
 
     thread_id = thread or str(uuid.uuid4())
-    run_config = {"configurable": {"thread_id": thread_id}}
+    run_config = {
+        "configurable": {"thread_id": thread_id},
+        "recursion_limit": config.RECURSION_LIMIT,
+    }
     print(f"thread_id={thread_id}")
 
     for chunk in compiled.stream(initial_state(dataset), run_config, stream_mode="updates"):
