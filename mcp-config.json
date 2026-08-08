@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "quality-guardian": {
+      "command": "C:/Users/yagop/Desktop/Projects/Formação AI Data Engineer/quality-guardian-langgraph/.venv/Scripts/python.exe",
+      "args": ["-m", "src.guardian.mcp_server"],
+      "cwd": "C:/Users/yagop/Desktop/Projects/Formação AI Data Engineer/quality-guardian-langgraph",
+      "env": {
+        "GUARDIAN_PG_HOST": "localhost",
+        "GUARDIAN_PG_PORT": "5442"
+      }
+    }
+  }
+}
