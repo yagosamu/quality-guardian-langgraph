@@ -18,12 +18,16 @@
 
 # ─── Agent runtime artifacts ───
 **/guardian_checkpoints.db
+**/guardian_checkpoints.db-*
 **/*.sqlite
 **/*.sqlite3
 **/.langgraph_api/
 **/.chainlit/
 **/.files/
 **/chainlit.md
+
+# ─── Playwright MCP test artifacts ───
+**/.playwright-mcp/
 
 # ─── Reference material (kept local, not published) ───
 **/prompts/
