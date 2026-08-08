@@ -17,10 +17,8 @@
 
   <rect width="1200" height="630" fill="url(#bg)"/>
 
-  <!-- title -->
-  <rect x="60" y="42" width="4" height="34" fill="#3b82f6"/>
-  <text x="78" y="66" fill="#f4f5f7" font-size="34" font-weight="700">Quality Guardian</text>
-  <text x="60" y="96" fill="#9aa3b5" font-size="16">
+  <!-- lead line -->
+  <text x="60" y="72" fill="#e8ecf3" font-size="20" font-weight="600">
     Stateful LangGraph agent · explicit state machine · self-correction · human-in-the-loop
   </text>
 
@@ -104,5 +102,5 @@
 
   <!-- caption -->
   <text x="60" y="580" fill="#7b8496" font-size="14">check_schema → validate_rules → score → (route) → optimize ⇄ evaluate → human_gate → recommend → write_ledger</text>
-  <text x="60" y="604" fill="#4ade80" font-size="13" font-weight="600">quality_flag written to the W01 Ledger: the trigger the W03 Crew watches for</text>
+  <text x="60" y="604" fill="#4ade80" font-size="13" font-weight="600">quality_flag written to the Ledger: the trigger a downstream crew watches for</text>
 </svg>

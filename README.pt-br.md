@@ -1,13 +1,12 @@
-# Quality Guardian
+# Quality Guardian LangGraph
 
 [English](README.md) · **Português**
 
 ![Quality Guardian](assets/hero.svg)
 
 Um **agente stateful em LangGraph** que valida a qualidade dos dados do
-[DataOps Knowledge Hub](llamaindex_pydantic_rag/README.pt-br.md) (W01) e grava o veredito de
-volta no Ledger. Esse veredito é o gatilho que uma Crew CrewAI (W03) fica de olho pra agir.
-Construído durante minha especialização em AI Data Engineer.
+[DataOps Knowledge Hub](llamaindex_pydantic_rag/README.pt-br.md) e grava o veredito de volta
+no Ledger. Esse veredito é o gatilho que uma Crew CrewAI fica de olho pra agir.
 
 ## Por que uma máquina de estados explícita?
 
@@ -26,6 +25,20 @@ condicional e cada ciclo é código que dá pra apontar. Nada da decisão fica e
 > O grafo congela a execução **dentro** de `human_gate` e devolve o controle pra quem (ou o
 > que) estiver rodando. Dias depois, num processo totalmente novo, ele retoma exatamente
 > daquele ponto assim que a decisão chega. É o checkpointer funcionando, não uma gambiarra.
+
+### Um modelo barato propõe, um modelo caro julga
+
+`optimize` roda no Claude Haiku; `evaluate` e `recommend` rodam no Claude Sonnet. Propor uma
+correção é um palpite, então um modelo barato pode arriscar. Decidir se esse palpite é seguro
+o bastante pra gravar no Ledger é a parte que carrega o risco de verdade, então essa etapa
+fica com o modelo mais forte.
+
+Isso não foi hipótese durante os testes. O avaliador forte rejeitou as propostas do modelo
+barato toda vez que elas inventavam dado, como um e-mail fabricado ou um nome de empresa
+copiado do nome do próprio cliente, e só aceitou uma correção quando ela realmente elevava o
+score do registro pra green. Rodar o modelo caro em cada proposta de um lote seria
+desperdício quando a maioria dos registros já está limpa; gastar ele só na hora do julgamento
+mantém o custo onde o risco está.
 
 ## Arquitetura
 
@@ -50,7 +63,7 @@ Exposto de **quatro** formas sobre o mesmo grafo: CLI, API Python, servidor MCP 
 Chainlit, mais o **LangGraph Studio** como uma quinta lente, visual. Nenhuma lógica é
 duplicada entre elas.
 
-- **Ler (factual):** SQL direto no Ledger do W01 (Postgres), determinístico e sem custo de
+- **Ler (factual):** SQL direto no Ledger (Postgres), determinístico e sem custo de
   LLM, limitado aos N registros mais recentes (o gerador nunca para; validar a tabela inteira
   mascararia reds pontuais na média e deixaria o estado ilegível).
 - **Gravar:** `health_score` / `quality_flag` de volta em `customers`, via SQL. O Hub não tem
@@ -116,7 +129,7 @@ Chainlit · PostgreSQL · Docker
 ```bash
 cp .env.example .env                 # adicione sua ANTHROPIC_API_KEY (opcional; sem ela,
                                       # cai num fallback determinístico)
-docker compose up -d postgres        # sobe o Ledger do W01
+docker compose up -d postgres        # sobe o Ledger
 
 pip install -r requirements.txt
 pip install -e .                     # registra o pacote `guardian` (necessário pro LangGraph Studio)

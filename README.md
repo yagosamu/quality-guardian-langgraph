@@ -1,13 +1,12 @@
-# Quality Guardian
+# Quality Guardian LangGraph
 
 **English** · [Português](README.pt-br.md)
 
 ![Quality Guardian](assets/hero.svg)
 
 A **stateful LangGraph agent** that validates the data quality of the
-[DataOps Knowledge Hub](llamaindex_pydantic_rag/README.md) (W01) and writes the verdict back
-to its Ledger. That verdict is the trigger a downstream CrewAI crew (W03) watches for. Built
-during my AI Data Engineer specialization.
+[DataOps Knowledge Hub](llamaindex_pydantic_rag/README.md) and writes the verdict back to its
+Ledger. That verdict is the trigger a downstream CrewAI crew watches for.
 
 ## Why an explicit state machine?
 
@@ -26,6 +25,20 @@ edge, and every cycle is code you can point at. Nothing about the decision is hi
 > The graph freezes execution *inside* `human_gate` and hands control back to whoever (or
 > whatever) is running it. Days later, in a brand-new process, it resumes from that exact
 > point the moment a decision comes in. That's the checkpointer working, not a hack.
+
+### A cheap model proposes, an expensive model judges
+
+`optimize` runs on Claude Haiku; `evaluate` and `recommend` run on Claude Sonnet. Proposing a
+fix is a guess, so a cheap model can take the swing. Deciding whether that guess is safe to
+write into the Ledger is the part that actually carries risk, so that step gets the stronger
+model.
+
+This wasn't a hypothetical during testing. The strong evaluator rejected the cheap model's
+proposals every time they invented data, such as a fabricated email address or a company name
+copied from a customer's own name, and only accepted a fix once it actually raised the
+record's score to green. Running the expensive model on every proposal in a batch would be
+wasteful when most records are already clean; spending it only on the judgment call keeps the
+cost where the risk is.
 
 ## Architecture
 
@@ -50,7 +63,7 @@ Served **four** ways over the exact same graph: CLI, a Python API, an MCP server
 Chainlit UI, plus **LangGraph Studio** as a fifth, visual lens. No logic is duplicated
 between them.
 
-- **Read (factual):** SQL straight against the W01 Ledger (Postgres), deterministic and with
+- **Read (factual):** SQL straight against the Ledger (Postgres), deterministic and with
   no LLM cost, windowed to the N most recent records (the generator never stops; validating
   the whole table would both mask individual red rows in the average and make the state
   unreadable).
@@ -117,7 +130,7 @@ Chainlit · PostgreSQL · Docker
 ```bash
 cp .env.example .env                 # add your ANTHROPIC_API_KEY (optional; falls back
                                       # to deterministic heuristics without one)
-docker compose up -d postgres        # start the W01 Ledger
+docker compose up -d postgres        # start the Ledger
 
 pip install -r requirements.txt
 pip install -e .                     # registers `guardian` (needed by LangGraph Studio)
