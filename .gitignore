@@ -29,6 +29,9 @@
 **/prompts/
 **/sketch/
 
+# ─── Local build progress notes (kept local, not published) ───
+**/Progress/
+
 # ─── Docker ───
 **/docker-compose.override.yml
 
