@@ -189,12 +189,22 @@ def human_gate(state: GuardianState) -> Command:
     # and hands control back to a human. `interrupt()` freezes execution at
     # this exact point (thanks to the checkpointer from prompt 06) until
     # `Command(resume=...)` comes in on the same thread_id.
+    #
+    # Two different roads lead here: a direct RED, or a YELLOW that route_after_evaluate
+    # escalated after MAX_RETRIES of self-correction failed — the question must say which.
+    flag = state.get("quality_flag")
+    health = state.get("health_score")
+    if flag == "red":
+        situation = f"está RED (health={health})"
+    else:
+        situation = (
+            f"ficou {flag} e não foi corrigido após {state.get('hardening', 0)} "
+            f"tentativa(s) de auto-correção (health={health})"
+        )
+
     decision = interrupt(
         {
-            "question": (
-                f"Dataset '{state['dataset']}' está RED "
-                f"(health={state.get('health_score')}). Aprovar gravação?"
-            ),
+            "question": f"Dataset '{state['dataset']}' {situation}. Aprovar gravação?",
             "violations": state.get("rule_violations") or [],
             "options": ["approve", "override"],
         }
